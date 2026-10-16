@@ -1,0 +1,48 @@
+{
+  "id": "valorant",
+  "name": "Valorant",
+  "reference_width": 1920,
+  "fps": 5,
+  "_regions": "Fractions (x, y, w, h) of the game area, measured on the default HUD at 16:9.",
+  "regions": {
+    "kill_banner": [0.40, 0.66, 0.20, 0.22],
+    "round_banner": [0.36, 0.10, 0.28, 0.18],
+    "death_panel": [0.76, 0.22, 0.24, 0.34],
+    "end_screen": [0.0, 0.0, 0.45, 0.5],
+    "match_found": [0.25, 0.28, 0.50, 0.24]
+  },
+  "signals": [
+    { "event": "kill", "region": "kill_banner", "templates": "kill-*.png", "threshold": 0.55, "rearm": 0.75, "min_frames": 1, "cooldown": 0.8, "match": "edges" },
+    { "event": "death", "region": "death_panel", "templates": "death-*.png", "threshold": 0.7, "min_frames": 3, "cooldown": 40, "match": "gray" },
+    { "event": "round_won", "region": "round_banner", "templates": "round-won*.png", "threshold": 0.6, "min_frames": 2, "cooldown": 8, "match": "edges" },
+    { "event": "round_lost", "region": "round_banner", "templates": "round-lost*.png", "threshold": 0.6, "min_frames": 2, "cooldown": 8, "match": "edges" },
+    { "event": "match_won", "region": "end_screen", "templates": "victory*.png", "threshold": 0.6, "min_frames": 3, "cooldown": 60, "match": "gray" },
+    { "event": "match_lost", "region": "end_screen", "templates": "defeat*.png", "threshold": 0.6, "min_frames": 3, "cooldown": 60, "match": "gray" },
+    { "event": "match_start", "region": "match_found", "templates": "match-found*.png", "threshold": 0.6, "min_frames": 2, "cooldown": 60, "match": "edges" }
+  ],
+  "clips": {
+    "pre": 6,
+    "post": 3,
+    "merge_gap": 6,
+    "multi_bonus": { "kill": 0.75 },
+    "title_order": ["kill", "round_won", "round_lost", "match_won", "match_lost", "death"]
+  },
+  "weights": {
+    "kill": 1.0,
+    "round_won": 0.4,
+    "match_won": 2.0,
+    "match_lost": 0.5,
+    "death": 0,
+    "round_lost": 0,
+    "match_start": 0
+  },
+  "labels": {
+    "kill": ["kill", "kills"],
+    "death": ["death", "deaths"],
+    "round_won": ["round won", "rounds won"],
+    "round_lost": ["round lost", "rounds lost"],
+    "match_won": ["victory", "victories"],
+    "match_lost": ["defeat", "defeats"],
+    "match_start": ["new match", "new matches"]
+  }
+}

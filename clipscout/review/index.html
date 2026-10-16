@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clipscout review</title>
+<link rel="stylesheet" href="/review/style.css">
+</head>
+<body>
+<header class="top">
+    <div>
+        <p class="kicker">Clipscout</p>
+        <h1 id="title">Loading…</h1>
+        <p class="meta" id="meta"></p>
+    </div>
+    <div class="actions">
+        <label class="check"><input type="checkbox" id="accurate"> Frame-exact (re-encode)</label>
+        <button id="export" class="primary">Export kept clips</button>
+    </div>
+</header>
+
+<section class="bar">
+    <div class="timeline" id="timeline" aria-label="Recording timeline"></div>
+    <div class="filters">
+        <div class="chips" id="filters"></div>
+        <div class="chips">
+            <button class="chip" data-sort="time" aria-pressed="true">By time</button>
+            <button class="chip" data-sort="score" aria-pressed="false">Best first</button>
+            <button class="chip" data-show="open" aria-pressed="false">Unreviewed</button>
+        </div>
+    </div>
+</section>
+
+<main class="grid" id="grid"></main>
+<p class="empty" id="empty" hidden>No clips here.</p>
+<div class="toast" id="toast" hidden></div>
+
+<template id="card">
+    <article class="card" tabindex="0">
+        <video preload="metadata" controls playsinline></video>
+        <div class="body">
+            <div class="row">
+                <h2></h2>
+                <span class="score"></span>
+            </div>
+            <p class="time"></p>
+            <div class="events"></div>
+            <div class="row controls">
+                <div class="trim">
+                    <span>Start</span><button data-trim="start" data-d="-2">−2s</button><button data-trim="start" data-d="2">+2s</button>
+                    <span>End</span><button data-trim="end" data-d="-2">−2s</button><button data-trim="end" data-d="2">+2s</button>
+                </div>
+                <div class="decide">
+                    <button data-keep="false" title="Skip (X)">Skip</button>
+                    <button data-keep="true" class="keep" title="Keep (K)">Keep</button>
+                </div>
+            </div>
+        </div>
+    </article>
+</template>
+
+<script src="/review/app.js"></script>
+</body>
+</html>
