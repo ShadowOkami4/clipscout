@@ -26,9 +26,12 @@ class Clip:
         }
 
 
-def build_clips(events: list[Event], profile: Profile, duration: float) -> list[Clip]:
-    pre = profile.clips.get("pre", 6.0)
-    post = profile.clips.get("post", 3.0)
+def build_clips(events: list[Event], profile: Profile, duration: float,
+                pre: float | None = None, post: float | None = None) -> list[Clip]:
+    pre = profile.clips.get("pre", 6.0) if pre is None else pre
+    post = profile.clips.get("post", 3.0) if post is None else post
+    min_len = profile.clips.get("min_length", 0.0)
+    max_len = profile.clips.get("max_length", 0.0)    # 0 = no limit
     gap = profile.clips.get("merge_gap", 6.0)
     multi = profile.clips.get("multi_bonus", {})          # e.g. {"kill": 0.5}: extra per additional kill
     order = profile.clips.get("title_order", [])
@@ -44,9 +47,19 @@ def build_clips(events: list[Event], profile: Profile, duration: float) -> list[
             groups.append([e])
 
     clips = []
+    prev_end = 0.0
     for i, g in enumerate(groups, 1):
-        start = max(g[0].t - pre, 0.0)
-        end = min(g[-1].t + post, duration) if duration else g[-1].t + post
+        start = g[0].t - pre
+        end = g[-1].t + post
+        if min_len and end - start < min_len:
+            start = end - min_len                       # extra time goes before: the build-up
+        if max_len and end - start > max_len:
+            # Too long: trim the lead-in first, but keep 2 s before the first event.
+            start = min(max(start, end - max_len), g[0].t - 2)
+        # Never repeat the end of the previous clip (keeps at least 2 s before this clip's first event).
+        start = max(start, min(prev_end, g[0].t - 2), 0.0)
+        end = min(end, duration) if duration else end
+        prev_end = end
         inside = [e for e in events if start <= e.t <= end]     # context events (deaths, round ends) too
         counts = Counter(e.kind for e in inside)
         score = sum(weights.get(e.kind, 0) for e in inside)

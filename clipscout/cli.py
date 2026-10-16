@@ -29,7 +29,7 @@ def cmd_scan(a) -> int:
         start=parse_time(a.start) if a.start else 0.0,
         end=parse_time(a.end) if a.end else None,
         fps=a.fps, threads=a.threads, hwaccel=a.hwaccel,
-        previews=not a.no_previews, debug=a.debug,
+        previews=not a.no_previews, debug=a.debug, pre=a.pre, post=a.post,
     )
     print(f"Project: {path}")
     if a.review:
@@ -37,6 +37,16 @@ def cmd_scan(a) -> int:
         serve(path, threads=a.threads)
     else:
         print(f"Next: clipscout review \"{a.video}\"")
+    return 0
+
+
+def cmd_reclip(a) -> int:
+    from .project import load, resolve_project
+    from .scan import reclip
+
+    path = resolve_project(a.project)
+    profile = load_profile(a.game or load(path)["game"])
+    reclip(path, profile, pre=a.pre, post=a.post, previews=not a.no_previews, threads=a.threads)
     return 0
 
 
@@ -122,8 +132,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-previews", action="store_true", help="don't cut preview clips")
     p.add_argument("--debug", action="store_true", help="also write per-frame match scores to trace.csv")
     p.add_argument("--review", action="store_true", help="open the review page when done")
+    p.add_argument("--pre", type=float, help="seconds of build-up before the first event (default from the profile)")
+    p.add_argument("--post", type=float, help="seconds after the last event")
     _common(p)
     p.set_defaults(func=cmd_scan)
+
+    p = sub.add_parser("reclip", help="rebuild the clips of a scan (e.g. other --pre/--post) without rescanning")
+    p.add_argument("project")
+    p.add_argument("--game", help="use another profile's clip settings")
+    p.add_argument("--pre", type=float)
+    p.add_argument("--post", type=float)
+    p.add_argument("--no-previews", action="store_true")
+    _common(p)
+    p.set_defaults(func=cmd_reclip)
 
     p = sub.add_parser("review", help="open the review page for a scanned recording")
     p.add_argument("project", help="the recording, its .clipscout folder, or project.json")

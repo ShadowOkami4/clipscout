@@ -61,3 +61,49 @@ def test_clips_merge_close_events_and_skip_context_only():
 def test_clips_clamp_to_the_recording():
     clips = build_clips([Event(1, "kill", 1), Event(99, "kill", 1)], _profile(), duration=100)
     assert clips[0].start == 0 and clips[1].end == 100
+
+
+def test_clip_length_limits_and_no_overlap():
+    prof = _profile(min_length=10, max_length=30, pre=12, post=4, merge_gap=10)
+    # single kill: 12 s before + 4 s after = 16 s
+    c = build_clips([Event(100, "kill", 1)], prof, duration=1000)[0]
+    assert (c.start, c.end) == (88, 104)
+    # long fight: kills 0..40 s apart in 8 s steps → capped at 30 s, keeps 2 s before the first kill only if it fits
+    kills = [Event(200 + 8 * i, "kill", 1) for i in range(6)]   # 200..240
+    c = build_clips(kills, prof, duration=1000)[0]
+    assert c.end == 244 and c.start == 198            # never cuts into the first kill
+    # second clip starting inside the first one's tail gets its lead-in shortened
+    a, b = build_clips([Event(300, "kill", 1), Event(315, "kill", 1)], prof, duration=1000)
+    assert a.end == 304 and b.start == 304
+
+
+def test_state_turns_kills_into_mate_kills():
+    import numpy as np
+    from clipscout.detect import Detector
+    from clipscout.profile import Signal, Template
+
+    box = np.zeros((20, 20), np.uint8)
+    box[5:15, 5:15] = 255
+    ring = np.zeros((20, 20), np.uint8)
+    ring[3:17, 3:17] = 255
+    ring[7:13, 7:13] = 0
+    prof = _profile()
+    prof.regions = {"a": (0, 0, 0.5, 1), "b": (0.5, 0, 0.5, 1)}
+    prof.reference_width = 80
+    prof.signals = [
+        Signal("kill", "a", "", threshold=0.8, templates=[Template("k", box)], when={"spectating": "mate_kill"}),
+        Signal("spectating", "b", "", threshold=0.8, templates=[Template("s", ring)], state=True),
+    ]
+    det = Detector(prof, (0, 0, 1, 1))
+
+    def frame(kill, spec):
+        f = np.zeros((40, 80, 3), np.uint8)
+        if kill:
+            f[10:30, 10:30] = box[..., None]
+        if spec:
+            f[10:30, 50:70] = ring[..., None]
+        return f
+
+    seq = [(0, 0), (1, 0), (0, 0), (0, 1), (1, 1), (0, 1)]
+    kinds = [e.kind for t, (k, s) in enumerate(seq) for e in det.feed(t, frame(k, s))]
+    assert kinds == ["kill", "mate_kill"]

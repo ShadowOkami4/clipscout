@@ -45,6 +45,8 @@ class Signal:
     cooldown: float = 0.5     # seconds between two events of this signal
     match: str = "gray"       # "gray" or "edges" (edges ignore colour and brightness)
     scales: list[float] = field(default_factory=lambda: [1.0])
+    state: bool = False       # a condition that's on or off (e.g. spectating) instead of an event
+    when: dict[str, str] = field(default_factory=dict)  # {state: other event kind} while that state is on
     templates: list[Template] = field(default_factory=list)
 
 
@@ -97,6 +99,7 @@ def load_profile(game_id: str) -> Profile:
             threshold=raw.get("threshold", 0.7), min_frames=raw.get("min_frames", 1),
             rearm=raw.get("rearm", 0.85), cooldown=raw.get("cooldown", 0.5),
             match=raw.get("match", "gray"), scales=raw.get("scales", [1.0]),
+            state=raw.get("state", False), when=raw.get("when", {}),
         )
         seen = set()
         for folder in reversed(template_dirs(game_id)):  # user templates win on equal names

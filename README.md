@@ -43,8 +43,10 @@ clipscout review "2026-10-15 20-01-33.mkv"
 clipscout export "2026-10-15 20-01-33.mkv"
 ```
 
-1. **`scan`** checks 5 frames per second, logs every event it finds and groups close events into clips: 6 s before
-   the first event and 3 s after the last. It writes `<recording>.clipscout/project.json` and fast preview clips.
+1. **`scan`** checks 5 frames per second, logs every event it finds and groups close events into ready-to-use clips:
+   - **Length:** 12 s of build-up before the first event and 4 s after the last. Each clip is 10–30 s, and clips
+     never overlap.
+   - **Output:** `<recording>.clipscout/project.json` plus fast preview clips.
 2. **`review`** opens a local page (127.0.0.1 only):
    - **Watch and decide:** play each suggestion, then **Keep** (K) or **Skip** (X).
    - **Trim:** nudge the start and end by 2 s at a time.
@@ -64,6 +66,10 @@ Useful options:
 | `--hwaccel cuda` | Pick the hardware decoder (`auto` by default, `none` to turn it off). |
 | `--debug` | Also writes `trace.csv` with every signal's match score per frame, for tuning thresholds. |
 | `--review` | Open the review page as soon as the scan finishes. |
+| `--pre 15 --post 5` | Seconds of build-up before and after the events (defaults from the game profile). |
+
+To try other clip lengths without rescanning, run `clipscout reclip <recording> --pre 20`. It rebuilds the clips
+from the saved events.
 
 ### Tip for OBS recordings
 
@@ -75,7 +81,7 @@ keyframes the clips are copied losslessly and almost instantly.
 
 | Game | Events | State |
 |---|---|---|
-| Valorant | kills (incl. multi-kills), deaths, round won/lost (WON, FLAWLESS, ACE, LOST), victory, new match | works; a defeat template is still missing |
+| Valorant | your kills (incl. multi-kills), teammate kills while you spectate, deaths, round won/lost (WON, FLAWLESS, ACE, LOST), victory, new match | works; a defeat template is still missing |
 
 `clipscout games` lists every profile, its signals and whether templates exist.
 
@@ -104,6 +110,10 @@ A game is a folder in `clipscout/games/<id>/` with a `profile.json` and its temp
   - **`min_frames`:** how many frames in a row it must be found.
   - **`cooldown`:** seconds before the same signal can fire again.
   - **`match`:** `"edges"` (ignores colours and backgrounds, usually best for HUD icons) or `"gray"`.
+  - **`state`:** set to `true` for a condition that's on or off rather than an event. Valorant uses it for
+    spectating, recognised by the "SWITCH PLAYER" label.
+  - **`when`:** turns an event into another kind while a state is on. For example,
+    `{"spectating": "mate_kill"}` makes a kill banner count as a teammate's kill.
 - **`clips`:** padding before and after events (`pre`, `post`), and the gap that merges close events (`merge_gap`).
 - **`weights`:** how much each event counts. Events with weight 0, like deaths, never start a clip on their own,
   but they still show up inside clips.

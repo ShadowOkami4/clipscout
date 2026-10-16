@@ -45,6 +45,8 @@ def scan(
     previews: bool = True,
     debug: bool = False,
     quiet: bool = False,
+    pre: float | None = None,
+    post: float | None = None,
 ) -> Path:
     info = probe(video)
     out_dir = out_dir or project_dir(video)
@@ -82,20 +84,11 @@ def scan(
     if not quiet:
         print("\r" + " " * 60 + "\r", end="", file=sys.stderr)
 
-    clips = build_clips(det.events, profile, info.duration)
+    clips = build_clips(det.events, profile, info.duration, pre=pre, post=post)
     log(f"Found {len(det.events)} events → {len(clips)} clips in {time.monotonic() - began:.0f} s")
 
     if previews and clips:
-        began_cut = time.monotonic()
-        jobs = [(c.start, c.end, out_dir / "clips" / f"{c.id}.mp4") for c in clips]
-        if sparse_keyframes(video, [(a, b) for a, b, _ in jobs]):
-            cut_many(video, jobs, preview=True, threads=threads, log=log)
-        else:
-            for i, (a, b, out) in enumerate(jobs, 1):
-                log(f"\r  cutting previews {i}/{len(jobs)}", end="")
-                cut(video, a, b, out, threads=threads, preview=True)
-            log("")
-        log(f"Previews ready in {time.monotonic() - began_cut:.0f} s")
+        make_previews(video, clips, out_dir, threads, log)
 
     project = {
         "clipscout": __version__,
@@ -118,3 +111,36 @@ def scan(
             writer.writerows(det.trace)
         log(f"Per-frame scores: {out_dir / 'trace.csv'}")
     return path
+
+
+def make_previews(video: str, clips, out_dir: Path, threads: int = 4, log=lambda *a, **k: None) -> None:
+    began = time.monotonic()
+    folder = out_dir / "clips"
+    for old in folder.glob("clip-*.mp4") if folder.exists() else []:
+        old.unlink()
+    jobs = [(c.start, c.end, folder / f"{c.id}.mp4") for c in clips]
+    if sparse_keyframes(video, [(a, b) for a, b, _ in jobs]):
+        cut_many(video, jobs, preview=True, threads=threads, log=log)
+    else:
+        for i, (a, b, out) in enumerate(jobs, 1):
+            log(f"\r  cutting previews {i}/{len(jobs)}", end="")
+            cut(video, a, b, out, threads=threads, preview=True)
+        log("")
+    log(f"Previews ready in {time.monotonic() - began:.0f} s")
+
+
+def reclip(project_path: Path, profile: Profile, pre: float | None = None, post: float | None = None,
+           previews: bool = True, threads: int = 4, quiet: bool = False) -> int:
+    """Rebuilds the clips from a scan's saved events (new padding or profile settings) without rescanning."""
+    from .detect import Event
+
+    log = (lambda *a, **k: None) if quiet else (lambda *a, **k: print(*a, file=sys.stderr, **k))
+    data = json.loads(project_path.read_text(encoding="utf-8"))
+    events = [Event(e["t"], e["kind"], e["score"], e.get("detail", "")) for e in data["events"]]
+    clips = build_clips(events, profile, data["duration"], pre=pre, post=post)
+    data["clips"] = [c.to_dict() for c in clips]
+    project_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    log(f"{len(clips)} clips")
+    if previews and clips:
+        make_previews(data["video"], clips, project_path.parent, threads, log)
+    return len(clips)
